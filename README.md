@@ -1,5 +1,5 @@
-# Design-GenNO
-A Novel Physics-Informed Deep Generative Neural Operator for Inverse Microstructure Design
+# Design-GenNO: A Physics-Informed Generative Model with Neural Operators for Inverse Microstructure Design
+This repository provides the official implementation of **Design-GenNO**, a novel **physics-informed Generative Model based on Neural Operators** for **Inverse Microstructure Design**.
 
 ## 🌟 Overview
 **Design-GenNO** is a physics-informed deep generative neural operator framework for **inverse microstructure design**. It unifies **generative modeling**, **operator learning**, and **physics-informed training** to design microstructures that meet user-specified targets such as **effective properties** or **microscopic field responses**. **Key features** of Design-GenNO include:
