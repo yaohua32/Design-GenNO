@@ -1,3 +1,9 @@
+# /*
+#  * @Author: yaohua.zang 
+#  * @Date: 2025-06-30 09:08:13 
+#  * @Last Modified by:   yaohua.zang 
+#  * @Last Modified time: 2025-06-30 09:08:13 
+#  */
 import numpy as np
 import h5py
 import torch 
@@ -8,14 +14,14 @@ def setup_seed(seed):
      torch.backends.cudnn.deterministic = True
 random_seed = 3047
 setup_seed(random_seed)
-device = 'cuda:3'
+device = 'cuda:0'
 dtype = torch.float32
-tag = 'MixedDriven'
+tag = 'PhysicsDriven'
 ######################################
 # Load training data
 ######################################
-data_train = h5py.File('./PSPChain/data_train_32.mat', 'r')
-data_test = h5py.File('./PSPChain/data_test_32.mat', 'r')
+data_train = h5py.File('./Dataset/data_train_32.mat', 'r')
+data_test = h5py.File('./Dataset/data_test_32.mat', 'r')
 res_coe, res_sol = 32, 64
 mu = [10., 2.] # [phase=1, phase=0]
 #####
@@ -90,7 +96,7 @@ print('The shape of duyy_test:', duyy_test.shape)
 ### Generate boundary data
 from Utils.GenPoints import Point2D
 pointGen = Point2D(x_lb=[0., 0.], x_ub=[1.,1.], dataType=dtype, random_seed=random_seed)
-N_bd_each_edge = 50
+N_bd_each_edge = 250
 x_bd = pointGen.boundary_point(num_each_edge=N_bd_each_edge, method='hypercube')
 x_lr = x_bd[0:2*N_bd_each_edge]
 x_bu = x_bd[2*N_bd_each_edge:]
@@ -103,22 +109,37 @@ import torch.nn as nn
 from torch.autograd import grad, Variable
 from Utils.GenPoints import Point2D
 from Utils.TestFun_ParticleWNN import TestFun_ParticleWNN
-##### The test function
+###############################
+# The test function
+###############################
 pointGen = Point2D(x_lb=[0., 0.], x_ub=[1.,1.], dataType=dtype, random_seed=random_seed)
 #
 int_grid, v, dv_dr = TestFun_ParticleWNN(
     fun_type='Wendland', dim=2, n_mesh_or_grid=7, dataType=dtype).get_testFun()
 print('int_grid shape:', int_grid.shape, 'v shape:', v.shape)
-######Set normalizer
+
+###############################
+# Set normalizer
+###############################
 class UnitGaussianNormalizer():
+
     def __init__(self, a, eps=1e-8):
         super(UnitGaussianNormalizer, self).__init__()
+        '''Apply normaliztion to inputs or outputs
+        Input:
+            a: size(N, mesh_size)
+        Output:
+            mean: size(mesh_szie,)
+            std: size(mesh_size,)
+        '''
         self.mean = torch.mean(a, 0)
         self.std = torch.std(a, 0)
         self.eps = eps
     
     def encode(self, a):
-        '''a: size(N, mesh_size)
+        '''
+        Input:
+            a: a: size(N, mesh_size)
         '''
         return (a - self.mean) / (self.std + self.eps)
     
@@ -127,7 +148,8 @@ class UnitGaussianNormalizer():
         return a * (self.std + self.eps) + self.mean
 #
 normalizer_feat = UnitGaussianNormalizer(feat_train.to(device))
-##########
+
+###############################
 class mollifer_x(object):
 
     def __inint__(self):
@@ -237,7 +259,7 @@ class LossClass(object):
         res4 = torch.sum(sy * dv, dim=-1).reshape(n_batch, nc, self.n_grid)
         res4 = torch.mean(res4, dim=-1)**2 # size(n_batch, nc)
 
-        return (torch.mean(res1) + torch.mean(res3))*1. + (torch.mean(res2) + torch.mean(res4)) * np.sqrt(nc)
+        return (torch.mean(res1) + torch.mean(res3))*1. + (torch.mean(res2) + torch.mean(res4)) * 2. * np.sqrt(nc)
         
     def Loss_data(self, idx, train_or_test):
         '''The data loss'''
@@ -259,38 +281,30 @@ class LossClass(object):
         a_true = (a-mu[1])/(mu[0]-mu[1])
         #
         loss_a = nn.functional.binary_cross_entropy(a_pred, a_true, reduction='mean')
-        ######################## The prediction of ux
-        ux_pred = self.model_ux(x, beta)
-        ux_pred = self.mollifer_x(ux_pred, x)
-        loss_ux = self.solver.getLoss(ux_pred, ux)
-        ######################## The prediction of uy
-        uy_pred = self.model_uy(x, beta)
-        uy_pred = self.mollifer_y(uy_pred, x)
-        loss_uy = self.solver.getLoss(uy_pred, uy)
-        ######################## The grad loss
-        loss_grad = self.get_grad_loss(idx, ux_pred, uy_pred, train_or_test)
+        ######################## The boundary loss
+        loss_bd = self.get_bd_loss(idx, beta)
 
-        return 2.*loss_a + (loss_ux + loss_uy)/2. + 0.1*loss_grad
+        return 2.*loss_a + 5.*loss_bd 
 
-    def get_grad_loss(self, idx, ux_pred, uy_pred, train_or_test):
-        '''Add grad loss'''
-        batch_size = len(idx)
-        if train_or_test=='train': 
-            duxx = duxx_train[idx].reshape(batch_size, res_sol, res_sol).to(self.device)
-            duyy = duyy_train[idx].reshape(batch_size, res_sol, res_sol).to(self.device)
-        elif train_or_test=='test':
-            duxx = duxx_test[idx].reshape(batch_size, res_sol, res_sol).to(self.device)
-            duyy = duyy_test[idx].reshape(batch_size, res_sol, res_sol).to(self.device)     
-        # duxx
-        ux_pred = ux_pred.reshape(batch_size, res_sol, res_sol) # size(batch, res_sol, res_sol)
-        duxx_pred = (ux_pred[:,:,2:]-ux_pred[:,:,:-2]) / (2. * self.dx)
-        loss_duxx = self.solver.getLoss(duxx_pred.reshape(batch_size, -1), duxx[:,:,1:-1].reshape(batch_size, -1))
-        # duyy
-        uy_pred = uy_pred.reshape(batch_size, res_sol, res_sol) # size(batch, res_sol, res_sol)
-        duyy_pred = (uy_pred[:,2:,:]-uy_pred[:,:-2,:]) / (2. * self.dy)
-        loss_duyy = self.solver.getLoss(duyy_pred.reshape(batch_size, -1), duyy[:,1:-1,:].reshape(batch_size, -1))
+    def get_bd_loss(self, idx, beta):
+        ''' '''
+        n_batch = len(idx)
+        ######################## The neumann boundary loss of ux
+        x_bd = Variable(x_lr.repeat((n_batch, 1, 1)).to(self.device), requires_grad=True)
+        #
+        ux = self.model_ux(x_bd, beta)
+        ux = self.mollifer_x(ux, x_bd)
+        dux = grad(inputs=x_bd, outputs=ux, grad_outputs=torch.ones_like(ux), create_graph=True)[0]
+        loss_neumann_x = torch.mean(dux[...,1]**2)
+        ######################## The neumann boundary loss of uy
+        x_bd = Variable(x_bu.repeat((n_batch, 1, 1)).to(self.device), requires_grad=True)
+        #
+        uy = self.model_uy(x_bd, beta)
+        uy = self.mollifer_y(uy, x_bd)
+        duy = grad(inputs=x_bd, outputs=uy, grad_outputs=torch.ones_like(uy), create_graph=True)[0]
+        loss_neumann_y = torch.mean(duy[...,0]**2)
 
-        return loss_duxx+loss_duyy
+        return loss_neumann_x + loss_neumann_y
 
     def Error(self):
         ''' '''
@@ -317,11 +331,11 @@ class LossClass(object):
 from Solvers.DGNO import DGNO
 solver = DGNO.Solver(device=device, dtype=dtype)
 netType = 'MultiONetBatch'
-beta_size = 128  
-hidden_size_a = 256 
-hidden_size = 100
+beta_size = 128   
+hidden_size_a = 256
+hidden_size = 128
 
-############## The beta model
+####################################### The beta model
 from Networks.EncoderNet import EncoderFCNet
 class Encoder(nn.Module):
     def __init__(self, layers_list, activation, dtype):
@@ -341,7 +355,7 @@ class Encoder(nn.Module):
 
 model_enc = Encoder([feat_train.shape[-1], 512, 256, beta_size], 'SiLU', dtype).to(device)
 
-########## The models
+###################################### The u model
 trunk_layers, branch_layers = [hidden_size_a]*5, [hidden_size_a]*5
 model_a = solver.getModel(x_in_size=2, a_in_size=beta_size, 
                           trunk_layers=trunk_layers, branch_layers=branch_layers,
