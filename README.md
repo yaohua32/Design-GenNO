@@ -55,6 +55,8 @@ scipy==1.12.0
 tqdm==4.66.1
 h5py==3.10.0
 matplotlib==3.8.2
+scikit-learn==1.7.2
+scienceplots==2.1.1
 ```
 
 ---
@@ -79,7 +81,7 @@ Download these folders and place them in the same directory as the training scri
 Install the required Python packages:
 
 ```bash
-pip install torch==2.2.0 scipy==1.12.0 tqdm==4.66.1 h5py==3.10.0 matplotlib==3.8.2
+pip install torch==2.2.0 scipy==1.12.0 tqdm==4.66.1 h5py==3.10.0 matplotlib==3.8.2 scikit-learn scienceplots
 ```
 
 ### Step 2. Prepare Data and Models
@@ -91,13 +93,13 @@ Download the datasets and pretrained models from the [Kaggle dataset](https://ww
 **Mixed-driven training** (using both labeled data and PDE residuals):
 
 ```bash
-nohup python3 -u DGenNO_MixedDriven.py > out_dgno_mixed &
+nohup python3 -u DesignGenNO_MixedDriven.py > out_mixed &
 ```
 
 **Physics-driven training** (using only PDE residuals):
 
 ```bash
-nohup python3 -u DGenNO_PhysicsDriven.py > out_dgno_physics &
+nohup python3 -u DesignGenNO_PhysicsDriven.py > out_physics &
 ```
 
 ### Step 4. Solve Inverse Design Problems
