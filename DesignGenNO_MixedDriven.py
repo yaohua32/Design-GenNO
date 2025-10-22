@@ -8,7 +8,7 @@ def setup_seed(seed):
      torch.backends.cudnn.deterministic = True
 random_seed = 3047
 setup_seed(random_seed)
-device = 'cuda:3'
+device = 'cuda:0'
 dtype = torch.float32
 tag = 'MixedDriven'
 ######################################
@@ -309,7 +309,7 @@ class LossClass(object):
         err_x = self.solver.getError(ux_pred, ux)
         err_y = self.solver.getError(uy_pred, uy)
         
-        return [err_x, err_y]
+        return torch.tensor([err_x, err_y])
         
 ######################################
 # Steups of the model

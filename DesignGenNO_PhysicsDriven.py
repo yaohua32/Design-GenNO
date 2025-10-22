@@ -323,7 +323,7 @@ class LossClass(object):
         err_x = self.solver.getError(ux_pred, ux)
         err_y = self.solver.getError(uy_pred, uy)
         
-        return [err_x, err_y]
+        return torch.tensor([err_x, err_y])
         
 ######################################
 # Steups of the model
