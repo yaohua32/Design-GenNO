@@ -1,6 +1,6 @@
 # Design-GenNO: Physics-Informed Generative Neural Operator for Inverse Microstructure Design
 
-This repository provides the official implementation of **Design-GenNO**, a novel **physics-informed generative model based on neural operators** for **inverse microstructure design**.
+This repository provides the official implementation of [**Design-GenNO**](https://www.sciencedirect.com/science/article/pii/S0045782525008692), a novel **physics-informed generative model based on neural operators** for **inverse microstructure design**.
 
 ---
 
@@ -115,15 +115,18 @@ Navigate to the corresponding Jupyter Notebook for your problem of interest and 
 
 ---
 
-<!-- ## 📄 Citation
+## 📄 Citation
 
 If you use this work in your research, please cite:
 
 ```bibtex
-@article{zang2025design,
-  title={Design-GenNO: A Physics-Informed Generative Model with Neural Operators for Inverse Microstructure Design},
+@article{zang2026design,
+  title={Design-GenNO: A physics-informed generative model with neural operators for inverse microstructure design},
   author={Zang, Yaohua and Koutsourelakis, Phaedon-Stelios},
-  journal={arXiv preprint arXiv:2509.08749},
-  year={2025}
+  journal={Computer Methods in Applied Mechanics and Engineering},
+  volume={450},
+  pages={118597},
+  year={2026},
+  publisher={Elsevier}
 }
-``` -->
+```
